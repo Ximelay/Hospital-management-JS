@@ -1,0 +1,10 @@
+/node_modules
+package-lock.json
+
+/desktop/node_modules
+/desktop/package-lock.json
+
+/client/node_modules
+/client/package-lock.json
+
+.idea
