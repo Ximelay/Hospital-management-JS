@@ -1,4 +1,5 @@
-const { Patients, Workplaces, Passports, Addresses, AddressesTypes } = require("../models");
+const { Patients, Workplaces, Passports, Addresses, AddressesTypes, MedicalCards } = require("../models");
+const QRCode = require("qrcode");
 
 // ✅ Получение всех пациентов (с местом работы, паспортом и адресом)
 const getAllPatients = async (req, res) => {
@@ -13,7 +14,8 @@ const getAllPatients = async (req, res) => {
                     model: Addresses,
                     attributes: ["FullAddress"],
                     include: [{ model: AddressesTypes, attributes: ["NameOfAddressType"] }]
-                }
+                },
+                { model: MedicalCards, attributes: ["idMedicalCard", "MedicalCardIssueDate"] } // ✅ Добавляем медицинскую карту
             ]
         });
 
@@ -26,6 +28,50 @@ const getAllPatients = async (req, res) => {
         res.status(500).json({ message: "Ошибка при получении пациентов", error: err });
     }
 };
+
+const getPatientByMedicalCard = async (req, res) => {
+    try {
+        const { idMedicalCard } = req.params;
+
+        const medicalCard = await MedicalCards.findOne({
+            where: { idMedicalCard },
+            include: [{ model: Patients, attributes: ["FirstName", "LastName", "BirthDate", "Gender"] }]
+        });
+
+        if (!medicalCard) {
+            return res.status(404).json({ message: "Пациент с таким номером медкарты не найден." });
+        }
+
+        res.status(200).json(medicalCard);
+    } catch (err) {
+        console.error("Ошибка при поиске пациента:", err);
+        res.status(500).json({ message: "Ошибка при поиске пациента", error: err });
+    }
+};
+
+const generateQRCode = async (req, res) => {
+    try {
+        const { idMedicalCard } = req.params;
+        const medicalCard = await MedicalCards.findOne({
+            where: { idMedicalCard },
+            include: [{ model: Patients, attributes: ["FirstName", "LastName"] }]
+        });
+
+        if (!medicalCard) {
+            return res.status(404).json({ message: "Медицинская карта не найдена." });
+        }
+
+        // Генерируем QR-код
+        const qrData = `Медкарта: ${medicalCard.idMedicalCard}\nФИО: ${medicalCard.Patient.FirstName} ${medicalCard.Patient.LastName}`;
+        const qrImage = await QRCode.toDataURL(qrData);
+
+        res.status(200).json({ qrImage });
+    } catch (err) {
+        console.error("Ошибка при генерации QR-кода:", err);
+        res.status(500).json({ message: "Ошибка при генерации QR-кода", error: err });
+    }
+};
+
 
 // ✅ Создание нового пациента (с местом работы, паспортом и адресом)
 const createPatient = async (req, res) => {
@@ -81,10 +127,17 @@ const createPatient = async (req, res) => {
             });
         }
 
+        // 🔹 Создаём медицинскую карту
+        const newMedicalCard = await MedicalCards.create({
+            MedicalCardIssueDate: new Date(), // ✅ Записываем текущую дату
+            Patients_idPatient: newPatient.idPatient
+        });
+
         // 🔹 6. Обновляем пациента с ID паспорта и ID адреса
         await newPatient.update({
             Passports_idPassport: passportRecord ? passportRecord.idPassport : null,
-            Addresses_idAddress: addressRecord ? addressRecord.idAddress : null
+            Addresses_idAddress: addressRecord ? addressRecord.idAddress : null,
+            MedicalCards_idMedicalCard: newMedicalCard.idMedicalCard // ✅ Сохраняем медицинскую карту в пациенте
         });
 
         res.status(201).json(newPatient);
@@ -145,6 +198,15 @@ const updatePatient = async (req, res) => {
                 return res.status(400).json({ message: "Некорректный тип адреса." });
             }
 
+            // Обновляем медицинскую карту, если передана дата
+            if (req.body.MedicalCardIssueDate) {
+                let medicalCardRecord = await MedicalCards.findOne({ where: { Patients_idPatient: id } });
+
+                if (medicalCardRecord) {
+                    await medicalCardRecord.update({ MedicalCardIssueDate: req.body.MedicalCardIssueDate });
+                }
+            }
+
             if (addressRecord) {
                 await addressRecord.update({
                     FullAddress: Address,
@@ -177,6 +239,7 @@ const deletePatient = async (req, res) => {
         // Удаляем зависимые данные (паспорт, адрес)
         await Passports.destroy({ where: { Patients_PatientID: id } });
         await Addresses.destroy({ where: { Patients_PatientID: id } });
+        await MedicalCards.destroy({ where: { Patients_idPatient: id } });
 
         // Удаляем пациента
         await patient.destroy();
@@ -188,7 +251,9 @@ const deletePatient = async (req, res) => {
 
 module.exports = {
     getAllPatients,
+    getPatientByMedicalCard,
     createPatient,
     updatePatient,
     deletePatient,
+    generateQRCode
 };

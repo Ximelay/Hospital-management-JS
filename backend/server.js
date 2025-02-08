@@ -19,6 +19,7 @@ const medicalHistoryRoutes = require("./routes/medicalHistory");
 const medicalCardsRoutes = require("./routes/medicalCards");
 const procedureTypesRoutes = require("./routes/procedureTypes");
 const diagnosesRoutes = require("./routes/diagnoses");
+const fileRoutes = require("./routes/files");
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/medicalHistory", medicalHistoryRoutes);
 app.use("/api/medicalCards", medicalCardsRoutes);
 app.use("/api/procedureTypes", procedureTypesRoutes);
 app.use("/api/diagnoses", diagnosesRoutes);
+app.use("/api/files", fileRoutes);
 
 // Запуск сервера после синхронизации с БД
 sequelize.sync({ force: false })  // false, чтобы не удалять таблицы при каждом запуске
