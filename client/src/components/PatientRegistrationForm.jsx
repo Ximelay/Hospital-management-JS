@@ -3,17 +3,18 @@ import axios from 'axios';
 
 const PatientRegistrationForm = () => {
     const [formData, setFormData] = useState({
-        FirstName: '',  // Название как в БД
+        FirstName: '',
         LastName: '',
         MiddleName: '',
-        InsurancePolicyNumber: '',
         BirthDate: '',
-        Gender: '',  // Пол теперь обязателен
-        EmailAddress: '',
+        Gender: '',
+        InsurancePolicyNumber: '',
         TelephoneNumber: '',
-        PassportData: '',
+        EmailAddress: '',
         Workplace: '',
+        PassportData: '',
         Address: '',
+        AddressType: '' // Новый параметр
     });
 
     const handleInputChange = (e) => {
@@ -23,8 +24,6 @@ const PatientRegistrationForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        console.log("Отправляемые данные:", formData); // Логируем данные перед отправкой
 
         try {
             const response = await axios.post('http://localhost:3000/api/patients', formData, {
@@ -43,23 +42,19 @@ const PatientRegistrationForm = () => {
                 <div className="left-column">
                     <div className="input-group">
                         <label>ФИО:</label>
-                        <input type="text" name="FirstName" value={formData.FirstName} onChange={handleInputChange}
-                               required/>
-                        <input type="text" name="LastName" value={formData.LastName} onChange={handleInputChange}
-                               required/>
-                        <input type="text" name="MiddleName" value={formData.MiddleName} onChange={handleInputChange}/>
+                        <input type="text" name="FirstName" value={formData.FirstName} onChange={handleInputChange} required />
+                        <input type="text" name="LastName" value={formData.LastName} onChange={handleInputChange} required />
+                        <input type="text" name="MiddleName" value={formData.MiddleName} onChange={handleInputChange} />
                     </div>
 
                     <div className="input-group">
                         <label>Номер страхового полиса:</label>
-                        <input type="text" name="InsurancePolicyNumber" value={formData.InsurancePolicyNumber}
-                               onChange={handleInputChange} required/>
+                        <input type="text" name="InsurancePolicyNumber" value={formData.InsurancePolicyNumber} onChange={handleInputChange} required />
                     </div>
 
                     <div className="input-group">
                         <label>Дата рождения:</label>
-                        <input type="date" name="BirthDate" value={formData.BirthDate} onChange={handleInputChange}
-                               required/>
+                        <input type="date" name="BirthDate" value={formData.BirthDate} onChange={handleInputChange} required />
                     </div>
 
                     <div className="input-group">
@@ -73,31 +68,36 @@ const PatientRegistrationForm = () => {
 
                     <div className="input-group">
                         <label>Электронный адрес:</label>
-                        <input type="email" name="EmailAddress" value={formData.EmailAddress}
-                               onChange={handleInputChange}/>
+                        <input type="email" name="EmailAddress" value={formData.EmailAddress} onChange={handleInputChange} />
                     </div>
 
                     <div className="input-group">
                         <label>Телефонный номер:</label>
-                        <input type="text" name="TelephoneNumber" value={formData.TelephoneNumber}
-                               onChange={handleInputChange} required/>
+                        <input type="text" name="TelephoneNumber" value={formData.TelephoneNumber} onChange={handleInputChange} required />
                     </div>
 
                     <div className="input-group">
                         <label>Паспортные данные:</label>
-                        <input type="text" name="PassportData" value={formData.PassportData}
-                               onChange={handleInputChange}/>
+                        <input type="text" name="PassportData" value={formData.PassportData} onChange={handleInputChange} required />
                     </div>
 
                     <div className="input-group">
                         <label>Место работы:</label>
-                        <input type="text" name="Workplace" value={formData.Workplace} onChange={handleInputChange}
-                               required/>
+                        <input type="text" name="Workplace" value={formData.Workplace} onChange={handleInputChange} required />
                     </div>
 
                     <div className="input-group">
                         <label>Адрес проживания:</label>
-                        <textarea name="Address" value={formData.Address} onChange={handleInputChange}/>
+                        <textarea name="Address" value={formData.Address} onChange={handleInputChange} required />
+                    </div>
+
+                    <div className="input-group">
+                        <label>Тип адреса:</label>
+                        <select name="AddressType" value={formData.AddressType} onChange={handleInputChange} required>
+                            <option value="">Выберите</option>
+                            <option value="Постоянный">Постоянный</option>
+                            <option value="Временный">Временный</option>
+                        </select>
                     </div>
 
                     <button type="submit" className="submit-btn">Сохранить изменения</button>

@@ -1,4 +1,4 @@
-const { Patients, Workplaces, Passports, Addresses } = require("../models");
+const { Patients, Workplaces, Passports, Addresses, AddressesTypes } = require("../models");
 
 // ✅ Получение всех пациентов (с местом работы, паспортом и адресом)
 const getAllPatients = async (req, res) => {
@@ -9,7 +9,11 @@ const getAllPatients = async (req, res) => {
             include: [
                 { model: Workplaces, attributes: ["WorkplaceName"] },
                 { model: Passports, attributes: ["SeriesNumber", "IssueDate"] },
-                { model: Addresses, attributes: ["FullAddress", "AddressType"] } // ❌ Убираем несуществующие поля
+                {
+                    model: Addresses,
+                    attributes: ["FullAddress"],
+                    include: [{ model: AddressesTypes, attributes: ["NameOfAddressType"] }]
+                }
             ]
         });
 
@@ -28,45 +32,49 @@ const createPatient = async (req, res) => {
     try {
         console.log("Данные, полученные от клиента:", req.body);
 
-        const { FirstName, LastName, MiddleName, BirthDate, Gender, InsurancePolicyNumber, TelephoneNumber, EmailAddress, Workplace, PassportData, Address, AddressType } = req.body;
+        const {
+            FirstName, LastName, MiddleName, BirthDate, Gender,
+            InsurancePolicyNumber, TelephoneNumber, EmailAddress,
+            Workplace, PassportData, Address, AddressType
+        } = req.body;
 
         if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber) {
             return res.status(400).json({ message: "Пожалуйста, заполните все обязательные поля." });
         }
 
-        // 🔹 Проверяем или создаем новое место работы
+        // 🔹 1. Проверяем или создаем место работы
         let workplaceRecord = await Workplaces.findOne({ where: { WorkplaceName: Workplace } });
         if (!workplaceRecord) {
             workplaceRecord = await Workplaces.create({ WorkplaceName: Workplace });
         }
 
-        // 🔹 Создаем пациента
+        // 🔹 2. Проверяем или создаем тип адреса
+        let addressTypeRecord = await AddressesTypes.findOne({ where: { NameOfAddressType: AddressType } });
+        if (!addressTypeRecord) {
+            return res.status(400).json({ message: "Некорректный тип адреса." });
+        }
+
+        // 🔹 3. Создаем пациента
         const newPatient = await Patients.create({
-            FirstName,
-            LastName,
-            MiddleName,
-            BirthDate,
-            Gender,
-            InsurancePolicyNumber,
-            TelephoneNumber,
-            EmailAddress,
-            Workplaces_idWorkplaces: workplaceRecord.idWorkplaces,
+            FirstName, LastName, MiddleName, BirthDate, Gender,
+            InsurancePolicyNumber, TelephoneNumber, EmailAddress,
+            Workplaces_idWorkplaces: workplaceRecord.idWorkplaces
         });
 
-        // 🔹 Добавляем паспортные данные
+        // 🔹 4. Добавляем паспортные данные
         if (PassportData) {
             await Passports.create({
                 SeriesNumber: PassportData,
-                Patients_PatientID: newPatient.idPatient,
+                Patients_idPatient: newPatient.idPatient
             });
         }
 
-        // 🔹 Добавляем адрес (ТЕПЕРЬ ПРАВИЛЬНО)
+        // 🔹 5. Добавляем адрес
         if (Address) {
             await Addresses.create({
                 FullAddress: Address,
-                AddressType: AddressType || "Домашний", // По умолчанию "Домашний"
-                Patients_PatientID: newPatient.idPatient,
+                AddressesTypes_idAddressType: addressTypeRecord.idAddressType, // ✅ Используем `idAddressType`
+                Patients_idPatient: newPatient.idPatient
             });
         }
 
@@ -106,8 +114,7 @@ const updatePatient = async (req, res) => {
             if (!workplaceRecord) {
                 workplaceRecord = await Workplaces.create({ WorkplaceName: Workplace });
             }
-            patient.Workplaces_idWorkplaces = workplaceRecord.idWorkplaces;
-            await patient.save();
+            await patient.update({ Workplaces_idWorkplaces: workplaceRecord.idWorkplaces });
         }
 
         // Обновляем паспортные данные
@@ -122,11 +129,24 @@ const updatePatient = async (req, res) => {
 
         // Обновляем адрес
         if (Address) {
-            let addressRecord = await Addresses.findOne({ where: { Patients_PatientID: id } });
+            let addressRecord = await Addresses.findOne({ where: { Patients_idPatient: id } });
+
+            let addressTypeRecord = await AddressesTypes.findOne({ where: { NameOfAddressType: AddressType } });
+            if (!addressTypeRecord) {
+                return res.status(400).json({ message: "Некорректный тип адреса." });
+            }
+
             if (addressRecord) {
-                await addressRecord.update({ FullAddress: Address, AddressType: AddressType || "Домашний" });
+                await addressRecord.update({
+                    FullAddress: Address,
+                    AddressesTypes_idAddressType: addressTypeRecord.idAddressType,
+                });
             } else {
-                await Addresses.create({ FullAddress: Address, AddressType: AddressType || "Домашний", Patients_PatientID: id });
+                await Addresses.create({
+                    FullAddress: Address,
+                    AddressesTypes_idAddressType: addressTypeRecord.idAddressType,
+                    Patients_idPatient: id
+                });
             }
         }
 
