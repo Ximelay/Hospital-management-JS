@@ -35,10 +35,10 @@ const createPatient = async (req, res) => {
         const {
             FirstName, LastName, MiddleName, BirthDate, Gender,
             InsurancePolicyNumber, TelephoneNumber, EmailAddress,
-            Workplace, PassportData, Address, AddressType
+            Workplace, PassportData, PassportIssueDate, Address, AddressType
         } = req.body;
 
-        if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber) {
+        if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber || !PassportIssueDate) {
             return res.status(400).json({ message: "Пожалуйста, заполните все обязательные поля." });
         }
 
@@ -54,29 +54,38 @@ const createPatient = async (req, res) => {
             return res.status(400).json({ message: "Некорректный тип адреса." });
         }
 
-        // 🔹 3. Создаем пациента
+        // 🔹 3. Создаём пациента
         const newPatient = await Patients.create({
             FirstName, LastName, MiddleName, BirthDate, Gender,
             InsurancePolicyNumber, TelephoneNumber, EmailAddress,
             Workplaces_idWorkplaces: workplaceRecord.idWorkplaces
         });
 
-        // 🔹 4. Добавляем паспортные данные
+        // 🔹 4. Добавляем паспортные данные с датой выдачи
+        let passportRecord = null;
         if (PassportData) {
-            await Passports.create({
+            passportRecord = await Passports.create({
                 SeriesNumber: PassportData,
+                IssueDate: PassportIssueDate,  // ✅ Теперь заполняем дату, введённую пользователем
                 Patients_idPatient: newPatient.idPatient
             });
         }
 
         // 🔹 5. Добавляем адрес
+        let addressRecord = null;
         if (Address) {
-            await Addresses.create({
+            addressRecord = await Addresses.create({
                 FullAddress: Address,
-                AddressesTypes_idAddressType: addressTypeRecord.idAddressType, // ✅ Используем `idAddressType`
+                AddressesTypes_idAddressType: addressTypeRecord.idAddressType,
                 Patients_idPatient: newPatient.idPatient
             });
         }
+
+        // 🔹 6. Обновляем пациента с ID паспорта и ID адреса
+        await newPatient.update({
+            Passports_idPassport: passportRecord ? passportRecord.idPassport : null,
+            Addresses_idAddress: addressRecord ? addressRecord.idAddress : null
+        });
 
         res.status(201).json(newPatient);
     } catch (err) {
