@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Workplaces = require("./Workplaces"); // <-- Добавляем импорт Workplaces
 
 const Patients = sequelize.define("Patients", {
     idPatient: {
@@ -40,14 +39,13 @@ const Patients = sequelize.define("Patients", {
     },
     Workplaces_idWorkplaces: {
         type: DataTypes.INTEGER,
-        references: {
-            model: Workplaces,
-            key: "idWorkplaces",
-        },
+    },
+    Passports_idPassport: {
+        type: DataTypes.INTEGER,
+    },
+    Addresses_idAddress: {
+        type: DataTypes.INTEGER,
     },
 });
-
-Patients.belongsTo(Workplaces, { foreignKey: "Workplaces_idWorkplaces" });
-Workplaces.hasMany(Patients, { foreignKey: "Workplaces_idWorkplaces" });
 
 module.exports = Patients;

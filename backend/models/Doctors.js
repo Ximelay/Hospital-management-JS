@@ -1,6 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Specializations = require("./Specializations"); // Если есть связь со специализациями
 
 const Doctors = sequelize.define("Doctors", {
     idDoctor: {
@@ -21,14 +20,7 @@ const Doctors = sequelize.define("Doctors", {
     },
     Specializations_SpecializationID: {
         type: DataTypes.INTEGER,
-        references: {
-            model: Specializations,
-            key: "SpecializationID",
-        },
     },
 });
-
-Doctors.belongsTo(Specializations, { foreignKey: "Specializations_SpecializationID" });
-Specializations.hasMany(Doctors, { foreignKey: "Specializations_SpecializationID" });
 
 module.exports = Doctors;

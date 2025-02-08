@@ -1,4 +1,4 @@
-const Passports = require("../models/Passport");
+const Passports = require("../models/Passports");
 
 // Получение всех паспортов
 const getAllPassports = async (req, res) => {

@@ -1,8 +1,5 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/database");
-const Doctors = require("./Doctors");
-const MedicalHistory = require("./MedicalHistory");
-const ProcedureTypes = require("./ProcedureTypes");
 
 const MedicalProcedures = sequelize.define("MedicalProcedures", {
     idMedicalProcedure: {
@@ -25,24 +22,12 @@ const MedicalProcedures = sequelize.define("MedicalProcedures", {
     },
     Doctors_idDoctor: {
         type: DataTypes.INTEGER,
-        references: {
-            model: Doctors,
-            key: "idDoctor",
-        },
     },
     MedicalHistory_idMedicalHistory: {
         type: DataTypes.INTEGER,
-        references: {
-            model: MedicalHistory,
-            key: "idMedicalHistory",
-        },
     },
     ProcedureTypes_idProcedureType: {
         type: DataTypes.INTEGER,
-        references: {
-            model: ProcedureTypes,
-            key: "idProcedureType",
-        },
     },
 });
 

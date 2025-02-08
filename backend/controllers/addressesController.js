@@ -1,4 +1,4 @@
-const Addresses  = require("../models/Addresses");
+const { Addresses }  = require("../models");
 
 // Получение всех адресов
 const getAllAddresses = async (req, res) => {
