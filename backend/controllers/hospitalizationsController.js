@@ -1,4 +1,4 @@
-const Hospitalizations  = require("../models/Hospitalizations");
+const { Hospitalizations, HospitalizationReasons, Patients } = require("../models");  // Добавляем модель Patients
 
 // Получение всех госпитализаций
 const getAllHospitalizations = async (req, res) => {
@@ -17,10 +17,30 @@ const getAllHospitalizations = async (req, res) => {
 // Создание новой госпитализации
 const createHospitalization = async (req, res) => {
     try {
-        const { PatientId, DateOfHospitalization, ReasonForHospitalization, Description, DischargeDate } = req.body;
-        const newHospitalization = await Hospitalizations.create({
-            PatientId, DateOfHospitalization, ReasonForHospitalization, Description, DischargeDate
+        const { medicalCardNumber, hospitalizationDate, reasonId, conditionDescription } = req.body;
+
+        // Ищем пациента через номер медкарты
+        const medicalCard = await MedicalCards.findOne({
+            where: { CardNumber: medicalCardNumber },  // Используем номер медкарты
+            include: [{ model: Patients, attributes: ["FirstName", "LastName"] }]
         });
+
+        if (!medicalCard) {
+            return res.status(400).json({ message: "Пациент с таким номером мед. карты не найден." });
+        }
+
+        const hospitalizationReason = await HospitalizationReasons.findByPk(reasonId);
+        if (!hospitalizationReason) {
+            return res.status(400).json({ message: "Причина госпитализации не найдена." });
+        }
+
+        const newHospitalization = await Hospitalizations.create({
+            HospitalizationDate: hospitalizationDate,
+            ConditionDescription: conditionDescription,
+            Patients_idPatient: medicalCard.Patients_idPatient,  // Используем PatientId из медицинской карты
+            HospitalizationReasons_idHospitalizationReasons: hospitalizationReason.idHospitalizationReasons
+        });
+
         res.status(201).json(newHospitalization);
     } catch (err) {
         console.error(err);

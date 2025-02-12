@@ -12,6 +12,7 @@ const {
 router.get("/", getAllPatients);  // Получить всех пациентов
 router.get("/medical-card/:idMedicalCard", getPatientByMedicalCard);
 router.get("/qr/:idMedicalCard", generateQRCode);
+router.get("/patients/medical-card/:medicalCardNumber", getPatientByMedicalCard);
 router.post("/", createPatient);  // Создать нового пациента
 router.put("/:id", updatePatient);  // Обновить пациента
 router.delete("/:id", deletePatient);  // Удалить пациента
