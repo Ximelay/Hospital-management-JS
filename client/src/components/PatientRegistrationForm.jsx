@@ -21,6 +21,11 @@ const PatientRegistrationForm = () => {
 
 
     const searchPatient = async () => {
+        if (!formData.MedicalCardNumber) {
+            alert("Введите номер медицинской карты");
+            return;
+        }
+
         try {
             const response = await axios.get(`http://localhost:3000/api/patients/medical-card/${formData.MedicalCardNumber}`);
             alert("Пациент найден в базе!");
@@ -30,6 +35,11 @@ const PatientRegistrationForm = () => {
     };
 
     const generateQRCode = async () => {
+        if (!formData.MedicalCardNumber) {
+            alert("Введите номер медицинской карты для генерации QR-кода");
+            return;
+        }
+
         try {
             const response = await axios.get(`http://localhost:3000/api/patients/qr/${formData.MedicalCardNumber}`);
             setQrCode(response.data.qrImage);

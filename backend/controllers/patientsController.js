@@ -31,11 +31,16 @@ const getAllPatients = async (req, res) => {
 
 const getPatientByMedicalCard = async (req, res) => {
     try {
-        const { medicalCardNumber } = req.params;
+        const { idMedicalCard } = req.params;
+
+        // Проверка на пустое значение
+        if (!idMedicalCard) {
+            return res.status(400).json({ message: "Номер медицинской карты не указан." });
+        }
 
         const medicalCard = await MedicalCards.findOne({
-            where: { CardNumber: medicalCardNumber },
-            include: [{ model: Patients, attributes: ["FirstName", "LastName", "MiddleName"] }]
+            where: { CardNumber: idMedicalCard },  // Используйте CardNumber, а не id
+            include: [{ model: Patients, attributes: ["FirstName", "LastName", "BirthDate", "Gender"] }]
         });
 
         if (!medicalCard) {
@@ -44,14 +49,21 @@ const getPatientByMedicalCard = async (req, res) => {
 
         res.status(200).json(medicalCard);
     } catch (err) {
-        console.error(err);
+        console.error("Ошибка при поиске пациента:", err);
         res.status(500).json({ message: "Ошибка при поиске пациента", error: err });
     }
 };
 
+
+
+
 const generateQRCode = async (req, res) => {
     try {
         const { medicalCardNumber } = req.params;
+
+        if (!medicalCardNumber) {
+            return res.status(400).json({ message: "Номер медицинской карты не указан." });
+        }
 
         const medicalCard = await MedicalCards.findOne({
             where: { CardNumber: medicalCardNumber },
@@ -81,7 +93,7 @@ const createPatient = async (req, res) => {
             FirstName, LastName, MiddleName, BirthDate, Gender,
             InsurancePolicyNumber, TelephoneNumber, EmailAddress,
             Workplace, PassportData, PassportIssueDate, Address, AddressType,
-            MedicalCardNumber  // Добавляем номер карты
+            MedicalCardNumber
         } = req.body;
 
         if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber || !PassportIssueDate) {
@@ -107,7 +119,7 @@ const createPatient = async (req, res) => {
             Workplaces_idWorkplaces: workplaceRecord.idWorkplaces
         });
 
-        // 🔹 4. Добавляем паспортные данные с датой выдачи
+        // 🔹 4. Добавляем паспортные данные
         let passportRecord = null;
         if (PassportData) {
             passportRecord = await Passports.create({
@@ -127,14 +139,17 @@ const createPatient = async (req, res) => {
             });
         }
 
-        // 🔹 Создаём медицинскую карту с номером карты
+        // 🔹 6. Генерируем случайный номер карты, если он не передан
+        const generatedCardNumber = MedicalCardNumber || `MC${Date.now()}`;
+
+        // 🔹 7. Создаём медицинскую карту
         const newMedicalCard = await MedicalCards.create({
-            CardNumber: MedicalCardNumber,  // Устанавливаем номер карты
+            CardNumber: generatedCardNumber,
             MedicalCardIssueDate: new Date(),
             Patients_idPatient: newPatient.idPatient
         });
 
-        // 🔹 6. Обновляем пациента с ID паспорта, ID адреса и ID медицинской карты
+        // 🔹 8. Обновляем пациента с ID паспорта, ID адреса и ID мед. карты
         await newPatient.update({
             Passports_idPassport: passportRecord ? passportRecord.idPassport : null,
             Addresses_idAddress: addressRecord ? addressRecord.idAddress : null,
