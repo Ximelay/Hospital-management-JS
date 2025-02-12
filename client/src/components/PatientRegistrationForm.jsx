@@ -14,8 +14,29 @@ const PatientRegistrationForm = () => {
         Workplace: '',
         PassportData: '',
         Address: '',
-        AddressType: '' // Новый параметр
+        AddressType: '',
+        MedicalCardNumber: ''
     });
+    const [qrCode, setQrCode] = useState("");
+
+
+    const searchPatient = async () => {
+        try {
+            const response = await axios.get(`http://localhost:3000/api/patients/medical-card/${formData.MedicalCardNumber}`);
+            alert("Пациент найден в базе!");
+        } catch (err) {
+            alert("Пациент не найден!");
+        }
+    };
+
+    const generateQRCode = async () => {
+        try {
+            const response = await axios.get(`http://localhost:3000/api/patients/qr/${formData.MedicalCardNumber}`);
+            setQrCode(response.data.qrImage);
+        } catch (err) {
+            alert("Ошибка при генерации QR-кода!");
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -53,6 +74,19 @@ const PatientRegistrationForm = () => {
                         <label>Номер страхового полиса:</label>
                         <input type="text" name="InsurancePolicyNumber" value={formData.InsurancePolicyNumber}
                                onChange={handleInputChange} required/>
+                    </div>
+
+                    <div className="input-group">
+                        <label>Номер медицинской карты:</label>
+                        <input type="text" name="MedicalCardNumber" value={formData.MedicalCardNumber}
+                               onChange={handleInputChange}/>
+                        <button type="button" onClick={searchPatient}>Проверить</button>
+                    </div>
+
+                    <div className="input-group">
+                        <label>QR-код медкарты:</label>
+                        {qrCode && <img src={qrCode} alt="QR Code"/>}
+                        <button type="button" onClick={generateQRCode}>Сгенерировать QR-код</button>
                     </div>
 
                     <div className="input-group">
@@ -112,6 +146,18 @@ const PatientRegistrationForm = () => {
                             <option value="Постоянный">Постоянный</option>
                             <option value="Временный">Временный</option>
                         </select>
+                    </div>
+
+                    <div className="input-group">
+                        <button onClick={() => window.open("http://localhost:3000/api/files/download/consent")}>
+                            Распечатать шаблон на согласие обработки персональных данных
+                        </button>
+                    </div>
+
+                    <div className="input-group">
+                        <button onClick={() => window.open("http://localhost:3000/api/files/download/agreement")}>
+                            Распечатать шаблон на договор медицинских услуг
+                        </button>
                     </div>
 
                     <button type="submit" className="submit-btn">Сохранить изменения</button>
