@@ -31,11 +31,11 @@ const getAllPatients = async (req, res) => {
 
 const getPatientByMedicalCard = async (req, res) => {
     try {
-        const { idMedicalCard } = req.params;
+        const { medicalCardNumber } = req.params;
 
         const medicalCard = await MedicalCards.findOne({
-            where: { idMedicalCard },
-            include: [{ model: Patients, attributes: ["FirstName", "LastName", "BirthDate", "Gender"] }]
+            where: { CardNumber: medicalCardNumber },
+            include: [{ model: Patients, attributes: ["FirstName", "LastName", "MiddleName"] }]
         });
 
         if (!medicalCard) {
@@ -44,16 +44,17 @@ const getPatientByMedicalCard = async (req, res) => {
 
         res.status(200).json(medicalCard);
     } catch (err) {
-        console.error("Ошибка при поиске пациента:", err);
+        console.error(err);
         res.status(500).json({ message: "Ошибка при поиске пациента", error: err });
     }
 };
 
 const generateQRCode = async (req, res) => {
     try {
-        const { idMedicalCard } = req.params;
+        const { medicalCardNumber } = req.params;
+
         const medicalCard = await MedicalCards.findOne({
-            where: { idMedicalCard },
+            where: { CardNumber: medicalCardNumber },
             include: [{ model: Patients, attributes: ["FirstName", "LastName"] }]
         });
 
@@ -62,7 +63,7 @@ const generateQRCode = async (req, res) => {
         }
 
         // Генерируем QR-код
-        const qrData = `Медкарта: ${medicalCard.idMedicalCard}\nФИО: ${medicalCard.Patient.FirstName} ${medicalCard.Patient.LastName}`;
+        const qrData = `Медкарта: ${medicalCard.CardNumber}\nФИО: ${medicalCard.Patient.FirstName} ${medicalCard.Patient.LastName}`;
         const qrImage = await QRCode.toDataURL(qrData);
 
         res.status(200).json({ qrImage });
@@ -76,12 +77,11 @@ const generateQRCode = async (req, res) => {
 // ✅ Создание нового пациента (с местом работы, паспортом и адресом)
 const createPatient = async (req, res) => {
     try {
-        console.log("Данные, полученные от клиента:", req.body);
-
         const {
             FirstName, LastName, MiddleName, BirthDate, Gender,
             InsurancePolicyNumber, TelephoneNumber, EmailAddress,
-            Workplace, PassportData, PassportIssueDate, Address, AddressType
+            Workplace, PassportData, PassportIssueDate, Address, AddressType,
+            MedicalCardNumber  // Добавляем номер карты
         } = req.body;
 
         if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber || !PassportIssueDate) {
@@ -112,7 +112,7 @@ const createPatient = async (req, res) => {
         if (PassportData) {
             passportRecord = await Passports.create({
                 SeriesNumber: PassportData,
-                IssueDate: PassportIssueDate,  // ✅ Теперь заполняем дату, введённую пользователем
+                IssueDate: PassportIssueDate,
                 Patients_idPatient: newPatient.idPatient
             });
         }
@@ -127,17 +127,18 @@ const createPatient = async (req, res) => {
             });
         }
 
-        // 🔹 Создаём медицинскую карту
+        // 🔹 Создаём медицинскую карту с номером карты
         const newMedicalCard = await MedicalCards.create({
-            MedicalCardIssueDate: new Date(), // ✅ Записываем текущую дату
+            CardNumber: MedicalCardNumber,  // Устанавливаем номер карты
+            MedicalCardIssueDate: new Date(),
             Patients_idPatient: newPatient.idPatient
         });
 
-        // 🔹 6. Обновляем пациента с ID паспорта и ID адреса
+        // 🔹 6. Обновляем пациента с ID паспорта, ID адреса и ID медицинской карты
         await newPatient.update({
             Passports_idPassport: passportRecord ? passportRecord.idPassport : null,
             Addresses_idAddress: addressRecord ? addressRecord.idAddress : null,
-            MedicalCards_idMedicalCard: newMedicalCard.idMedicalCard // ✅ Сохраняем медицинскую карту в пациенте
+            MedicalCards_idMedicalCard: newMedicalCard.idMedicalCard
         });
 
         res.status(201).json(newPatient);
