@@ -39,8 +39,33 @@ const getPatientByMedicalCard = async (req, res) => {
         }
 
         const medicalCard = await MedicalCards.findOne({
-            where: { CardNumber: idMedicalCard },  // Используйте CardNumber, а не id
-            include: [{ model: Patients, attributes: ["FirstName", "LastName", "BirthDate", "Gender"] }]
+            where: { CardNumber: idMedicalCard },  // Используется CardNumber
+            include: [
+                {
+                    model: Patients,
+                    attributes: ["FirstName", "LastName", "MiddleName", "BirthDate", "Gender", "InsurancePolicyNumber", "TelephoneNumber", "EmailAddress"],
+                    include: [
+                        {
+                            model: Workplaces,
+                            attributes: ["WorkplaceName"], // Данные о месте работы
+                        },
+                        {
+                            model: Passports,
+                            attributes: ["SeriesNumber", "IssueDate"], // Данные о паспорте
+                        },
+                        {
+                            model: Addresses,
+                            attributes: ["FullAddress"],
+                            include: [
+                                {
+                                    model: AddressesTypes,
+                                    attributes: ["NameOfAddressType"], // Тип адреса
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         });
 
         if (!medicalCard) {
@@ -265,11 +290,152 @@ const deletePatient = async (req, res) => {
     }
 };
 
+const saveOrUpdatePatient = async (req, res) => {
+    try {
+        const {
+            FirstName, LastName, MiddleName, BirthDate, Gender,
+            InsurancePolicyNumber, TelephoneNumber, EmailAddress,
+            Workplace, PassportData, PassportIssueDate, Address, AddressType,
+            MedicalCardNumber
+        } = req.body;
+
+        if (!FirstName || !LastName || !BirthDate || !Gender || !InsurancePolicyNumber || !TelephoneNumber) {
+            return res.status(400).json({ message: "Пожалуйста, заполните все обязательные поля." });
+        }
+
+        // 🔍 Найти пациента по номеру медицинской карты
+        const medicalCard = await MedicalCards.findOne({
+            where: { CardNumber: MedicalCardNumber },
+            include: [{ model: Patients }]
+        });
+
+        if (medicalCard && medicalCard.Patient) {
+            // ✅ Пациент существует - обновляем данные
+            const patient = medicalCard.Patient;
+
+            // Обновляем данные пациента
+            await patient.update({
+                FirstName,
+                LastName,
+                MiddleName,
+                BirthDate,
+                Gender,
+                InsurancePolicyNumber,
+                TelephoneNumber,
+                EmailAddress
+            });
+
+            // Обновляем место работы
+            if (Workplace) {
+                let workplaceRecord = await Workplaces.findOne({ where: { WorkplaceName: Workplace } });
+                if (!workplaceRecord) {
+                    workplaceRecord = await Workplaces.create({ WorkplaceName: Workplace });
+                }
+                await patient.update({ Workplaces_idWorkplaces: workplaceRecord.idWorkplaces });
+            }
+
+            // Обновляем паспорт
+            if (PassportData) {
+                const passportRecord = await Passports.findOne({ where: { Patients_idPatient: patient.idPatient } });
+                if (passportRecord) {
+                    await passportRecord.update({
+                        SeriesNumber: PassportData,
+                        IssueDate: PassportIssueDate
+                    });
+                } else {
+                    await Passports.create({
+                        SeriesNumber: PassportData,
+                        IssueDate: PassportIssueDate,
+                        Patients_idPatient: patient.idPatient
+                    });
+                }
+            }
+
+            // Обновляем адрес
+            if (Address) {
+                const addressRecord = await Addresses.findOne({ where: { Patients_idPatient: patient.idPatient } });
+                const addressType = await AddressesTypes.findOne({ where: { NameOfAddressType: AddressType } });
+
+                if (!addressType) {
+                    return res.status(400).json({ message: "Некорректный тип адреса." });
+                }
+
+                if (addressRecord) {
+                    await addressRecord.update({
+                        FullAddress: Address,
+                        AddressesTypes_idAddressType: addressType.idAddressType
+                    });
+                } else {
+                    await Addresses.create({
+                        FullAddress: Address,
+                        AddressesTypes_idAddressType: addressType.idAddressType,
+                        Patients_idPatient: patient.idPatient
+                    });
+                }
+            }
+
+            return res.status(200).json({ message: "Данные пациента успешно обновлены." });
+        } else {
+            // ❌ Пациента нет, создаем нового
+            let workplaceRecord = await Workplaces.findOne({ where: { WorkplaceName: Workplace } });
+            if (!workplaceRecord) {
+                workplaceRecord = await Workplaces.create({ WorkplaceName: Workplace });
+            }
+
+            const addressType = await AddressesTypes.findOne({ where: { NameOfAddressType: AddressType } });
+            if (!addressType) {
+                return res.status(400).json({ message: "Некорректный тип адреса." });
+            }
+
+            const newPatient = await Patients.create({
+                FirstName,
+                LastName,
+                MiddleName,
+                BirthDate,
+                Gender,
+                InsurancePolicyNumber,
+                TelephoneNumber,
+                EmailAddress,
+                Workplaces_idWorkplaces: workplaceRecord.idWorkplaces
+            });
+
+            if (PassportData) {
+                await Passports.create({
+                    SeriesNumber: PassportData,
+                    IssueDate: PassportIssueDate,
+                    Patients_idPatient: newPatient.idPatient
+                });
+            }
+
+            if (Address) {
+                await Addresses.create({
+                    FullAddress: Address,
+                    AddressesTypes_idAddressType: addressType.idAddressType,
+                    Patients_idPatient: newPatient.idPatient
+                });
+            }
+
+            const generatedCardNumber = MedicalCardNumber || `MC${Date.now()}`;
+            await MedicalCards.create({
+                CardNumber: generatedCardNumber,
+                MedicalCardIssueDate: new Date(),
+                Patients_idPatient: newPatient.idPatient
+            });
+
+            return res.status(201).json({ message: "Новый пациент успешно создан." });
+        }
+    } catch (error) {
+        console.error("Ошибка при сохранении/обновлении пациента:", error);
+        return res.status(500).json({ message: "Ошибка на сервере", error });
+    }
+};
+
 module.exports = {
     getAllPatients,
     getPatientByMedicalCard,
     createPatient,
     updatePatient,
     deletePatient,
-    generateQRCode
+    generateQRCode,
+    saveOrUpdatePatient
 };
