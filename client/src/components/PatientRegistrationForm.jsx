@@ -13,13 +13,14 @@ const PatientRegistrationForm = () => {
         EmailAddress: '',
         Workplace: '',
         PassportData: '',
+        PassportIssueDate: '',
         Address: '',
         AddressType: '',
         MedicalCardNumber: ''
     });
     const [qrCode, setQrCode] = useState("");
 
-
+    // Поиск пациента по номеру медицинской карты
     const searchPatient = async () => {
         if (!formData.MedicalCardNumber) {
             alert("Введите номер медицинской карты");
@@ -28,9 +29,48 @@ const PatientRegistrationForm = () => {
 
         try {
             const response = await axios.get(`http://localhost:3000/api/patients/medical-card/${formData.MedicalCardNumber}`);
-            alert("Пациент найден в базе!");
+
+            if (response.data && response.data.Patient) {
+                const patientData = response.data.Patient;
+
+                // Функция для преобразования даты в формат "YYYY-MM-DD"
+                const formatDate = (date) => {
+                    if (!date) return '';
+                    const d = new Date(date);
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0'); // Добавляем 0 перед месяцом, если нужно
+                    const day = String(d.getDate()).padStart(2, '0'); // Добавляем 0 перед днем, если нужно
+                    return `${year}-${month}-${day}`;
+                };
+
+                setFormData({
+                    FirstName: patientData.FirstName || '',
+                    LastName: patientData.LastName || '',
+                    MiddleName: patientData.MiddleName || '',
+
+                    BirthDate: formatDate(patientData.BirthDate), // Преобразуем дату рождения
+                    Gender: patientData.Gender || '',
+                    InsurancePolicyNumber: patientData.InsurancePolicyNumber || '',
+                    TelephoneNumber: patientData.TelephoneNumber || '',
+                    EmailAddress: patientData.EmailAddress || '',
+
+                    Workplace: patientData.Workplace?.WorkplaceName || '',
+                    PassportData: patientData.Passport?.SeriesNumber || '',
+                    PassportIssueDate: formatDate(patientData.Passport?.IssueDate), // Преобразуем дату выдачи паспорта
+
+                    Address: patientData.Address?.FullAddress || '',
+                    AddressType: patientData.Address?.AddressesType?.NameOfAddressType || '',
+
+                    MedicalCardNumber: formData.MedicalCardNumber
+                });
+
+                alert("Пациент найден и данные загружены!");
+            } else {
+                alert("Данные пациента не найдены.");
+            }
         } catch (err) {
-            alert("Пациент не найден!");
+            console.error("Ошибка при поиске пациента:", err);
+            alert("Пациент не найден! Проверьте номер медицинской карты.");
         }
     };
 
@@ -54,15 +94,19 @@ const PatientRegistrationForm = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Отключаем стандартное поведение формы
 
         try {
-            const response = await axios.post('http://localhost:3000/api/patients', formData, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-            console.log('Пациент успешно зарегистрирован:', response.data);
+            const response = await axios.post(
+                'http://localhost:3000/api/patients/save-or-update',
+                formData,
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+
+            alert(response.data.message); // Сообщение об успехе от сервера
         } catch (err) {
-            console.error('Ошибка при регистрации пациента:', err.response ? err.response.data : err);
+            console.error('Ошибка при сохранении данных пациента:', err.response ? err.response.data : err);
+            alert('Произошла ошибка при сохранении данных пациента');
         }
     };
 
@@ -101,8 +145,11 @@ const PatientRegistrationForm = () => {
 
                     <div className="input-group">
                         <label>Дата рождения:</label>
-                        <input type="date" name="BirthDate" value={formData.BirthDate} onChange={handleInputChange}
-                               required/>
+                        <input
+                            type="date"
+                            value={formData.BirthDate} // Преобразовано в формат "YYYY-MM-DD"
+                            onChange={(e) => setFormData({...formData, BirthDate: e.target.value})}
+                        />
                     </div>
 
                     <div className="input-group">
@@ -134,8 +181,11 @@ const PatientRegistrationForm = () => {
 
                     <div className="input-group">
                         <label>Дата выдачи паспорта:</label>
-                        <input type="date" name="PassportIssueDate" value={formData.PassportIssueDate}
-                               onChange={handleInputChange} required/>
+                        <input
+                            type="date"
+                            value={formData.PassportIssueDate} // Преобразовано в формат "YYYY-MM-DD"
+                            onChange={(e) => setFormData({...formData, PassportIssueDate: e.target.value})}
+                        />
                     </div>
 
                     <div className="input-group">
