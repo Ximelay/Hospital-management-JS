@@ -33,7 +33,7 @@ This project is a desktop application for managing patient hospitalizations. It 
 1. Start the backend server:
     ```sh
     cd backend
-    npm start
+    node server.js
     ```
 
 2. Start the client application:
