@@ -29,6 +29,23 @@ const getAllPatients = async (req, res) => {
     }
 };
 
+const getPatientsForHospitalization = async (req, res) => {
+    try {
+        const patients = await Patients.findAll({
+            attributes: ['idPatient', 'FirstName', 'LastName', 'MiddleName']
+        });
+
+        if (!patients || patients.length === 0) {
+            return res.status(200).json({ message: "Пациенты не найдены" });
+        }
+
+        res.status(200).json(patients);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Ошибка при получении пациентов для госпитализации", error: error })
+    }
+}
+
 const getPatientByMedicalCard = async (req, res) => {
     try {
         const { idMedicalCard } = req.params;
@@ -433,6 +450,7 @@ const saveOrUpdatePatient = async (req, res) => {
 module.exports = {
     getAllPatients,
     getPatientByMedicalCard,
+    getPatientsForHospitalization,
     createPatient,
     updatePatient,
     deletePatient,

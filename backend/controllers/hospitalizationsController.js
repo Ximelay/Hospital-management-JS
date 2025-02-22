@@ -1,15 +1,34 @@
-const { Hospitalizations, HospitalizationReasons, Patients } = require("../models");  // Добавляем модель Patients
+const { Hospitalizations, Patients  , HospitalizationReasons, MedicalCards } = require("../models");  // Добавляем модель Patients
 
 // Получение всех госпитализаций
 const getAllHospitalizations = async (req, res) => {
     try {
-        const hospitalizations = await Hospitalizations.findAll();
+        const hospitalizations = await Hospitalizations.findAll({
+            include: [
+                {
+                    model: Patients,
+                    attributes: ['FirstName', 'LastName', 'MiddleName'],
+                    include: [{  // Включаем MedicalCards через Patients
+                        model: MedicalCards,
+                        attributes: ['CardNumber']  // Только номер карты
+                    }]
+                },
+                {
+                    model: HospitalizationReasons,
+                    attributes: ['ReasonName'],
+                },
+            ],
+        });
+
+        // Логируем полученные данные
+        console.log("Загруженные госпитализации:", hospitalizations);
+
         if (!hospitalizations || hospitalizations.length === 0) {
             return res.status(200).json({ message: "Госпитализации не найдены" });
         }
         res.status(200).json(hospitalizations);
     } catch (err) {
-        console.error(err);
+        console.error("Ошибка при получении госпитализаций:", err);
         res.status(500).json({ message: "Ошибка при получении госпитализаций", error: err });
     }
 };
@@ -17,34 +36,26 @@ const getAllHospitalizations = async (req, res) => {
 // Создание новой госпитализации
 const createHospitalization = async (req, res) => {
     try {
-        const { medicalCardNumber, hospitalizationDate, reasonId, conditionDescription } = req.body;
+        const { patientId, medicalCardNumber, hospitalizationDate, conditionDescription, hospitalizationReasonId } = req.body;
 
-        // Ищем пациента через номер медкарты
-        const medicalCard = await MedicalCards.findOne({
-            where: { CardNumber: medicalCardNumber },  // Используем номер медкарты
-            include: [{ model: Patients, attributes: ["FirstName", "LastName"] }]
-        });
-
-        if (!medicalCard) {
-            return res.status(400).json({ message: "Пациент с таким номером мед. карты не найден." });
+        // Проверка на обязательные поля
+        if (!patientId || !medicalCardNumber || !hospitalizationDate || !conditionDescription || !hospitalizationReasonId) {
+            return res.status(400).json({ message: "Все поля обязательны для заполнения." });
         }
 
-        const hospitalizationReason = await HospitalizationReasons.findByPk(reasonId);
-        if (!hospitalizationReason) {
-            return res.status(400).json({ message: "Причина госпитализации не найдена." });
-        }
-
+        // Создаем запись о госпитализации
         const newHospitalization = await Hospitalizations.create({
+            Patients_idPatient: patientId,  // Здесь должен быть корректный patientId
+            MedicalCardNumber: medicalCardNumber,
             HospitalizationDate: hospitalizationDate,
             ConditionDescription: conditionDescription,
-            Patients_idPatient: medicalCard.Patients_idPatient,  // Используем PatientId из медицинской карты
-            HospitalizationReasons_idHospitalizationReasons: hospitalizationReason.idHospitalizationReasons
+            HospitalizationReasons_idHospitalizationReasons: hospitalizationReasonId  // Добавляем причину госпитализации
         });
 
         res.status(201).json(newHospitalization);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Ошибка при создании госпитализации", error: err });
+        console.error('Ошибка при создании госпитализации:', err);
+        res.status(500).json({ message: "Ошибка при добавлении госпитализации", error: err });
     }
 };
 
