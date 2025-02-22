@@ -50,7 +50,7 @@ This project is a desktop application for managing patient hospitalizations. It 
 
 ## Author
 
-Ximelay-2
+Ximelay
 
 ## License
 
