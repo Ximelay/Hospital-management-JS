@@ -7,46 +7,51 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>Госпитализация пациентов</h1>
+<h1>Госпитализация</h1>
+<button id="add-hospitalization-btn">Добавить новую госпитализацию</button>
 
-<div class="form-container">
-    <label>Номер мед. карты:</label>
-    <input type="text" id="medicalCardNumber">
+<!-- Форма добавления госпитализации (изначально скрыта) -->
+<div id="hospitalization-form" style="display: none;">
+    <h2>Добавить госпитализацию</h2>
+    <form id="add-hospitalization-form">
+        <label for="patient">Пациент:</label>
+        <select id="patient">
+            <option value="">-- Выберите пациента --</option>
+        </select>
 
-    <label>ФИО пациента:</label>
-    <input type="text" id="patientName" disabled>
+        <label for="medicalCardNumber">Номер мед. карты:</label>
+        <input type="text" id="medicalCardNumber" required>
 
-    <label>Дата госпитализации:</label>
-    <input type="date" id="hospitalizationDate">
+        <label for="hospitalizationDate">Дата госпитализации:</label>
+        <input type="date" id="hospitalizationDate" required>
 
-    <label>Причина госпитализации:</label>
-    <select id="reasonSelect"></select>
+        <label for="hospitalizationReason">Причина госпитализации:</label>
+        <select id="hospitalizationReason" required>
+            <option value="">-- Выберите причину --</option>
+        </select>
 
-    <label>Описание состояния:</label>
-    <textarea id="conditionDescription"></textarea>
+        <label for="conditionDescription">Описание состояния:</label>
+        <textarea id="conditionDescription" required></textarea>
 
-    <button id="addHospitalizationBtn">Добавить госпитализацию</button>
+        <button type="submit">Добавить госпитализацию</button>
+    </form>
 </div>
 
-<div class="table-container">
-    <h2>Текущие госпитализации</h2>
-    <table id="hospitalizationTable">
-        <thead>
-        <tr>
-            <th>Номер мед. карты</th>
-            <th>ФИО пациента</th>
-            <th>Дата госпитализации</th>
-            <th>Причина</th>
-            <th>Описание</th>
-            <th>Действие</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- Заполняется динамически -->
-        </tbody>
-    </table>
-</div>
+<h2>Список госпитализированных</h2>
+<table>
+    <thead>
+    <tr>
+        <th>Номер мед. карты</th>
+        <th>ФИО пациента</th>
+        <th>Дата госпитализации</th>
+        <th>Причина госпитализации</th>
+        <th>Описание состояния</th>
+        <th>Выписка</th>
+    </tr>
+    </thead>
+    <tbody id="hospitalizations-list"></tbody>
+</table>
 
-<script src="renderer.js"></script>
+<script src="./renderer.js"></script>
 </body>
 </html>
